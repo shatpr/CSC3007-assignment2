@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSC3007-ASSIGNMENT2</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+   
+    <style>
+      div.tooltip {
+        position: absolute;
+        text-align: center;
+        width: 30px;
+        height: 15px;
+        padding: 2px;
+        font: 12px sans-serif;
+        border: 10px;
+        pointer-events: none;
+    }
+    </style>
+  </head>
+
+  <body>
+    <div class="container py-3">
+        <div class="row">
+            <div class="col">
+                <h5 class="text-center">Singapore Crime Analysis</h5>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-3"></div>
+            <div class="input-field col-3">
+                <select id="selectYear">
+                    <option value="2020" selected>2020</option>
+                    <option value="2019">2019</option>
+                    <option value="2018">2018</option>
+                    <option value="2017">2017</option>
+                    <option value="2016">2016</option>
+                    <option value="2015">2015</option>
+                    <option value="2014">2014</option>
+                    <option value="2013">2013</option>
+                    <option value="2012">2012</option>
+                    <option value="2011">2011</option>
+
+                </select>
+            </div>  
+            <div class="col-3">
+                <label>Select your year</label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <div id="bar_chart"></div>
+            </div>    
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.4.4/d3.min.js" integrity="sha512-hnFpvCiJ8Fr1lYLqcw6wLgFUOEZ89kWCkO+cEekwcWPIPKyknKV1eZmSSG3UxXfsSuf+z/SgmiYB1zFOg3l2UQ=="crossorigin="anonymous"referrerpolicy="no-referrer"></script>
+    <script type="text/javascript">
+        
+    fetch('https://data.gov.sg/api/action/datastore_search?resource_id=83c21090-bd19-4b54-ab6b-d999c251edcf')
+            .then((response) => 
+            {
+                return response.json();
+            })
+                .then((d)=> {
+                    console.log(d)
+                    data = d.result.records
+                    console.log(data)
+                    let datas = []
+
+            // graph dimension and margins 
+
+            var tooltip = d3.select("#bar_chart")
+                        .append("div")
+                        .style("position", "absolute")
+                        .style("background", "#fff");
+
+            var margin = { top: 30, right: 30, bottom: 100, left: 60 },
+            width = 1000 - margin.left - margin.right,
+            height = 800 - margin.top - margin.bottom;
+
+            // Append the svg object to the body of the page
+            var svg = d3.select('#bar_chart').append('svg')
+                .attr('viewBox', '0 0 '+ (width + margin.left + margin.right) + ' ' + (height + margin.top + margin.bottom))
+                .append('g')
+                .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+
+            //x domain
+            var x = d3
+            .scaleBand()
+            .domain(data.map(function (d) { return d.level_2; }))
+            .range([0, width])
+            .padding(0.4)
+
+            var xAxis = svg
+            .append('g')
+            .attr('transform', 'translate(0,' + height + ')')
+            .call(d3.axisBottom(x))
+            
+            //y domain
+            var y = d3
+                .scaleLinear()
+                .domain([0, d3.max(data, function (d) { return parseInt(d.value) })])
+                .range([height, 0])
+
+            var yAxis = svg
+                .append('g')
+                .attr('class', 'y_axis')
+                .transition()
+                .duration(1000)
+                .call(d3.axisLeft(y))
+
+            
+            function getFilterData(year){
+                return data.filter((record) => {return record.year == year});
+            }
+
+            function plot(filterData){
+                svg.selectAll("rect").remove();
+                // text label for the y axis
+                svg.append("text")
+                .attr("transform", "rotate(-80)")
+                .attr("y", 0 - margin.left)
+                .attr("x",0 - (height / 2))
+                .attr("dy", "1em") 
+                .attr("font-size", "14px")
+                .style("text-anchor", "middle")
+                .text(" No. of cases"); 
+
+                // bar variable 
+                var bar = svg.selectAll("mybar")
+                    .data(filterData)
+                    .enter()
+                    .append("rect")
+                        .attr("x", function(d) { return x(d.level_2); })
+                        .attr("y", function(d) { return y(d.value); })
+                        .attr("width", x.bandwidth())
+                        .attr("height", function(d) { return height - y(d.value); })
+                        .attr("fill", "#69b3a2")
+                        .on('mouseover', function  (event , d) {
+                            console.log(d.level_2)
+                            console.log(d)
+                            tooltip
+                            .style("left", (event.pageX - 50) + "px")
+                            .style("top", (event.pageY - 50) + "px")
+                            .style("visibility","visible")
+                            .html((d.level_2) + "<br>" + (d.value));
+                        })
+                        .on("mouseout", function (d) {
+                            tooltip.style("visibility", "hidden"); 
+                        })
+            }
+
+            plot(getFilterData(2020))
+
+            document.querySelector('#selectYear').addEventListener("change", function() {
+                plot(getFilterData(this.value))
+            });
+
+        })
+      
+    </script>
+  </body>
+</html>
